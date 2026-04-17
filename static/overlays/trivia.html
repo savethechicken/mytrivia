@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trivia Panel</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        width: 1440px;
+        height: 610px;
+        font-family: Arial, sans-serif;
+        background: #10131a;
+        color: #fff;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 14px;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .meta { display: flex; gap: 12px; font-weight: 700; }
+      .pill { background: #1d2433; padding: 8px 12px; border-radius: 10px; }
+      .question { font-size: 34px; line-height: 1.2; min-height: 88px; }
+      .answers {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .answer {
+        border: 1px solid #2e3a52;
+        border-radius: 10px;
+        padding: 14px;
+        font-size: 26px;
+        background: #171d2a;
+      }
+      .answer.correct { border-color: #27c27a; background: #123024; }
+      .timer-wrap {
+        height: 14px;
+        background: #232d41;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .timer {
+        height: 100%;
+        background: linear-gradient(90deg, #00c2ff, #0076ff);
+        width: 100%;
+        transition: width 0.4s linear;
+      }
+      #winner {
+        font-size: 26px;
+        font-weight: 700;
+        color: #ffd66b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="meta">
+      <div class="pill" id="phase">Phase: IDLE</div>
+      <div class="pill" id="round">Round: 0</div>
+      <div class="pill" id="category">Category: -</div>
+    </div>
+    <div class="question" id="question">Waiting for game start...</div>
+    <div class="answers" id="answers"></div>
+    <div>
+      <div class="timer-wrap"><div class="timer" id="timer"></div></div>
+      <div id="winner"></div>
+    </div>
+
+    <script>
+      const stateUrl = `${location.origin}/game/state`;
+
+      function answerEl(index, text, isCorrect) {
+        const el = document.createElement('div');
+        el.className = `answer${isCorrect ? ' correct' : ''}`;
+        el.textContent = `${index + 1}) ${text}`;
+        return el;
+      }
+
+      async function tick() {
+        try {
+          const r = await fetch(stateUrl, { cache: 'no-store' });
+          const s = await r.json();
+          document.getElementById('phase').textContent = `Phase: ${s.phase}`;
+          document.getElementById('round').textContent = `Round: ${s.round_number}/${s.max_rounds}`;
+
+          const q = s.question;
+          document.getElementById('category').textContent = `Category: ${q?.category ?? '-'}`;
+          document.getElementById('question').textContent = q?.text ?? 'Waiting for next question...';
+
+          const answers = document.getElementById('answers');
+          answers.innerHTML = '';
+          if (q?.answers) {
+            q.answers.forEach((a, i) => {
+              const reveal = s.phase === 'QUESTION_REVEAL' || s.phase === 'GAME_OVER';
+              answers.appendChild(answerEl(i, a, reveal && i === q.correct_index));
+            });
+          }
+
+          const winner = document.getElementById('winner');
+          if (s.phase === 'GAME_OVER' && s.leaderboard?.length) {
+            const winners = s.leaderboard.filter((p) => s.winner_keys.includes(p.key));
+            winner.textContent = `Winner${winners.length > 1 ? 's' : ''}: ${winners.map((w) => w.display_name).join(', ')}`;
+          } else {
+            winner.textContent = '';
+          }
+
+          const pct = s.phase === 'QUESTION_ACTIVE' ? 100 : 0;
+          document.getElementById('timer').style.width = `${pct}%`;
+        } catch (e) {
+          document.getElementById('question').textContent = 'Unable to reach trivia app.';
+        }
+      }
+
+      setInterval(tick, 500);
+      tick();
+    </script>
+  </body>
+</html>

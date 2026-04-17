@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leaderboard Panel</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        width: 480px;
+        height: 610px;
+        font-family: Arial, sans-serif;
+        background: #10131a;
+        color: #fff;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      #phase { margin-bottom: 12px; color: #b6c2df; }
+      .row {
+        display: grid;
+        grid-template-columns: 44px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        background: #171d2a;
+        border: 1px solid #29334a;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+      .rank { color: #84b4ff; font-weight: 700; }
+      .score { font-weight: 700; }
+      .winner { border-color: #27c27a; box-shadow: 0 0 0 1px #27c27a inset; }
+    </style>
+  </head>
+  <body>
+    <h1>Leaderboard</h1>
+    <div id="phase">Phase: IDLE</div>
+    <div id="board"></div>
+
+    <script>
+      const stateUrl = `${location.origin}/game/state`;
+
+      async function tick() {
+        try {
+          const r = await fetch(stateUrl, { cache: 'no-store' });
+          const s = await r.json();
+          document.getElementById('phase').textContent = `Phase: ${s.phase}`;
+
+          const root = document.getElementById('board');
+          root.innerHTML = '';
+
+          const players = s.leaderboard?.slice(0, 10) ?? [];
+          if (!players.length) {
+            root.textContent = 'No players yet.';
+            return;
+          }
+
+          players.forEach((p) => {
+            const row = document.createElement('div');
+            row.className = `row${s.winner_keys?.includes(p.key) ? ' winner' : ''}`;
+            row.innerHTML = `
+              <div class="rank">#${p.rank}</div>
+              <div style="color:${p.color || '#FFFFFF'}">${p.display_name}</div>
+              <div class="score">${p.score}</div>
+            `;
+            root.appendChild(row);
+          });
+        } catch (e) {
+          document.getElementById('board').textContent = 'Unable to reach trivia app.';
+        }
+      }
+
+      setInterval(tick, 500);
+      tick();
+    </script>
+  </body>
+</html>
